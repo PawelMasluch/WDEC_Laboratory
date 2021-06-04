@@ -1,0 +1,3 @@
+http://www.socr.ucla.edu/Applets.dir/F_Table.html
+
+Wartość dla alfa = 0.05, df1 = 3, df2 = INFINITY, wynosi 2.6049.

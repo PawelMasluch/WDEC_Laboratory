@@ -1,0 +1,155 @@
+/* Czynności wstępne */
+
+/* Stworzenie biblioteki Lab11A */
+libname Lab11A '/folders/myfolders/Lab11A';
+
+
+/* ----------------------------------------------- */
+
+
+/* Generacja danych */
+
+/* 1) Wykorzystując data step systemu sas wygeneruj tabelę z danymi o charakterystyce procesu ARIMA (2,3).
+	-> model u = 5.0+0.14*u1 + 0,71*u2 + a - 0.5*a1 + 0.7*a2 + 0.2*a3;
+	-> współczynnik a powinien być obliczony z wykorzystaniem rozkładu normalnego o średniej 0 i wariancji 0.4.
+	-> ilość wygenerowanych wartości: 2000
+	-> ilość punktów startowych 100 */
+data Lab11A.dane;                                                                                                                                
+	u1=0; u2=0; a1 = 0; a2=0; a3 = 0;                                                                                                       
+	
+	do i = -100 to 2000;                                                                                                                    
+		a = 0 + sqrt(0.4)*rannor( 32565 );                                                                                                          
+		u = 5 + 0.14*u1 + 0.71*u2 + a - 0.5*a1 + 0.7*a2 + 0.2*a3;                                                                               
+		if i > 0 then output;                                                                                                                   
+	    u2 = u1; u1 = u; a3 = a2; a2 = a1; a1 = a;
+	end;                                                                                                                                    
+run;    
+
+
+
+/* 2) Oblicz następujące statystyki: średnia, min, max, oraz odchylenie standardowe (PROC MEANS) */
+
+proc means data = Lab11A.dane N MEAN MIN MAX STDDEV;
+	title "Statystyki wygenerowanych danych"; 
+run;                                                                                                                                    
+
+
+
+/* 3) Narysuj wykres wygenerowanych danych */
+
+proc sgplot data = Lab11A.dane;    
+	title "Wykres wygenerowanych danych";                                                                                                               
+	series x = i y = u;                                                                                                                     
+run;                                                                                                                                    
+
+
+/* ---------------------------------------------- */
+
+
+/* Obliczenia modelu */
+
+/* 1) Dla wygenerowanych danych zbuduj model ARMA(1,1) i oblicz prognozę na podstawie tego modelu. */
+
+/* Zbudowanie modelu ARMA(1,1) i obliczenie prognozy na podstawie tego modelu */
+proc arima data=Lab11A.dane;                                                                                                                      
+	title "Zbudowanie modelu ARMA(1,1) i obliczenie prognozy na podstawie tego modelu";
+	
+	identify var=u scan;                                                                                                                 
+	run;                                                                                                                                    
+	
+	estimate p=1 q=1 /*printall*/ plot method=ML;                                                                                                                       
+	run;                                                                                                                                    
+	
+	outlier /*ALPHA=0.05 TYPE=additive*/;                                                                                                                              
+	run;                                                                                                                                   
+	
+	forecast id = i out=Lab11A.arma_1_1;                                                                                     
+run;
+
+/* Wykres obliczonej prognozy */
+proc sgplot data=LAB11A.arma_1_1;
+	title "Wykres prognozy na podstawie modelu ARMA(1,1)";
+	series x=i y=FORECAST;
+	series x=i y=u;
+run;
+
+
+
+
+/* 2) Dla wygenerowanych danych zbuduj model ARMA(2,3) i oblicz prognozę na podstawie tego modelu. */
+
+/* Zbudowanie modelu ARMA(2,3) i obliczenie prognozy na podstawie tego modelu */
+proc arima data=Lab11a.dane;                                                                                                                      
+	title "Zbudowanie modelu ARMA(2,3) i obliczenie prognozy na podstawie tego modelu";
+	
+	identify var=u;                                                                                                                 
+	run;                                                                                                                                    
+	
+	estimate p=2 q=3 /*printall*/ plot method=ML;                                                                                                                       
+	run;                                                                                                                                    
+	
+	outlier /*ALPHA=0.05 TYPE=additive*/;                                                                                                                                
+	run;                                                                                                                                   
+	
+	forecast id = i out=Lab11A.arma_2_3;                                                                                     
+run;                                                                                                                                  
+        
+/* Wykres obliczonej prognozy */
+proc sgplot data = Lab11A.arma_2_3;
+	title "Wykres prognozy na podstawie modelu ARMA(2,3)";
+	series x=i y=FORECAST;
+	series x=i y=u;
+run;
+
+
+
+
+
+/* 3) Oblicz średni błąd kwadratowy (MSE) dla modelu ARMA (1,1) i modelu ARMA(2,3) i porównaj te modele z punktu widzenia jakości prognozy. */
+
+/* ARMA(1,1) */
+data Lab11A.arma_1_1;
+	set Lab11A.arma_1_1;
+	mean_squared_error = RESIDUAL*RESIDUAL;
+run;
+
+proc means data = Lab11A.arma_1_1;
+	title "Statystyki MSE dla modelu ARMA(1,1)";
+	var mean_squared_error;
+run;
+/* Wynik (MSE) odczytujemy z kolumny Średnia - wynosi ok. 1.6247144 */ 
+
+
+
+
+/* ARMA(2,3) */
+data Lab11A.arma_2_3;
+	set Lab11A.arma_2_3;
+	mean_squared_error = RESIDUAL*RESIDUAL;
+run;
+
+proc means data = Lab11A.arma_2_3;
+	title "Statystyki MSE dla modelu ARMA(2,3)";
+	var mean_squared_error;
+run;
+/* Wynik (MSE) odczytujemy z kolumny Średnia - wynosi ok. 0.4123600 */
+
+
+
+/* 
+	Porównanie modeli z punktu widzenia jakości prognozy
+
+
+Analizując średni błąd kwadratowy (MSE) dla modelu ARMA(1,1) oraz ARMA(2,3),
+widzimy, że dla modelu ARMA(1,1) wyniósł ok. 1.6247144, natomiast dla modelu ARMA(2,3)
+wyniósł ok. 0.4123600. Zatem model ARMA(2,3) ma mniejszą wartość MSE,
+a co za tym idzie, jest lepiej dopasowany do naszych danych niż model ARMA(1,1).
+Wartości liczbowe odczytałem z kolumn Średnia z dwóch ostatnich tabel. 
+
+
+Dalej, analizując  wykresy  korelacji reszt dla zmiennej u, możemy dostrzec, że w przypadku modelu ARMA(1,1) reszty wykazują charakter cykliczny, co świadczy o słabym dopasowaniu do naszych danych.  Dla modelu ARMA(2,3)  możemy dostrzec, że reszty są bardzo niewielki (praktycznie zerowe), co świadczy o dobrym dopasowaniu tego modelu do naszych danych. 
+
+
+*/
+
+

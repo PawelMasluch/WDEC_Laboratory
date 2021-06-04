@@ -1,0 +1,842 @@
+/* Czynności wstępne */
+
+
+
+/* 1) Stworzenie biblioteki Lab11B */
+libname Lab11B '/folders/myfolders/Lab11B';
+
+
+
+/* --------------------- */
+
+
+
+/* 2) Import plików danych do SAS-a */
+
+/* set1 */
+proc import DATAFILE= "/folders/myfolders/Lab11B/set1.xlsx"                                                          
+            OUT= Lab11B.set1                                                                                                               
+            DBMS=xlsx                                                                                                            
+            REPLACE;                                                                                                                
+            
+            GETNAMES=yes;                                                                                                                  
+run;                                                                                                                                    
+    
+    
+/* set2 */
+proc import DATAFILE= "/folders/myfolders/Lab11B/set2.xlsx"                                                          
+            OUT= Lab11B.set2                                                                                                               
+            DBMS=xlsx                                                                                                            
+            REPLACE;                                                                                                                
+            
+            GETNAMES=yes;                                                                                                                  
+run;                                                                                                                                    
+
+
+/* set3 */ 
+/* Uwaga. W oryginalnym pliku set3.xlsx, 
+   w komórce B15 wpisałem tekst "Total". */                                                                                                                                    
+proc import DATAFILE= "/folders/myfolders/Lab11B/set3.xlsx"                                                          
+            OUT= Lab11B.set3                                                                                                               
+            DBMS=xlsx                                                                                                               
+            REPLACE; 
+            
+            RANGE= "International airline passenger$A15:B159" ;
+            
+            GETNAMES= yes;                                                                                                             
+run;
+
+
+
+/* ------------------------------------------------------------------------------------------- */
+
+
+
+/* Dane - wstępna analiza */
+
+
+/* 1) Oblicz następujące statystyki
+	  dla dostępnych danych: 
+	  średnia, min, max, 
+	  oraz odchylenie standardowe. */
+
+/* set1 */
+proc means data=Lab11B.set1  mean min max stddev;                                                                                                 
+        title  'Statystyki danych - set1';                                                                                                                                     
+run;                                                                                                                                    
+                                                                                                                                    
+/* set2 */                                                                                                                                      
+proc means data=Lab11B.set2  mean min max stddev;                                                                                                 
+        title  'Statystyki danych - set2';                                                                                                                        
+run;                                                                                                                                    
+
+/* set3 */                                                                                                                                   
+proc means data=Lab11B.set3  mean min max stddev;                                                                                                 
+        title  'Statystyki danych - set3';
+        var Total;
+run;
+
+
+
+/* ------------------------- */
+
+
+
+/* 2) Narysuj wykresy dla dostępnych danych. */
+
+/* set1 */                                                                                                                                    
+proc sgplot data =Lab11B.set1;                                                                                                                 
+        title 'Wykres - set1';                                                                                                             
+        series x=i y=u;                                                                                                                 
+run;                                                                                                                                    
+       
+
+/* set2 */                                                                                                                                   
+proc sgplot data =Lab11B.set2;                                                                                                                 
+        title 'Wykres - set2';                                                                                                             
+        series x=i y=u;                                                                                                                 
+run;                                                                                                                                    
+
+
+/* set3 */
+proc sgplot data =Lab11B.set3;                                                                                                                 
+        title 'Wykres - set3';                                                                                                             
+        series x=Month y=Total;                                                                                                                 
+run;            
+
+
+
+/* --------------------- */
+
+
+
+/* 3) Napisz czym charakteryzują się 
+	  poszczególne zestawy danych. 
+	  Jakie wnioski możesz wyciągnąć 
+	  ze wstępnej analizy 
+	  (w razie potrzeby policz 
+	  inne charakterystyki danych) */                                                                                                                                
+            
+
+/* set1 */
+/* Na wykresie widzimy, że dany zestaw danych charakteryzuje się trendem wzrostowym. 
+   Odchylenie standardowe jest dość duże. */
+
+/* set2 */
+/* Wykres oscyluje wokół wartości ok. 6.65.
+   Niewielkie odchylenie standardowe. */
+
+/* set3 */
+/* Z wykresu widać tendencję wzrostową danych oraz wzrastajacą sezonowość danych.
+   Dość duże odchylenie standardowe.*/
+  
+  
+  
+/* ----------------------------------------------------------------------------------------------------- */
+
+
+
+
+/* Obliczenia modelu */
+
+
+/* 1) Dla dostarczonych danych zbuduj trzy modele ARIMA(p,d,q). 
+	  Parametry p,d,q oraz parametry modelu należy znaleźć 
+	  korzystając z procedury ARIMA. */
+
+/* Postępujemy według następującego schematu:
+   a) na początku dokonujemy wstępnej identyfikacji modelu bez okresu różnicowania (d=0)
+   b) w zależności od wyników analizy z części a), dokonujemy odpowiednich analiz
+   z konkretnymi parametrami p,d,q (patrzymy na tabelę Testy wyboru porządku próbnego ARMA(p+d,q) 
+   oraz przyjmujemy w doborze wartości p, d, q założenia p>0, d>=0, q>=0), przy czym ograniczamy się 
+   do co najwyżej 2-3 różnych modeli dla każdego zbioru danych */
+
+
+
+
+
+/* set1 */
+
+/* Wstępna identyfikacja */
+proc arima data = Lab11B.set1;
+	title "Wstępna identyfikacja - set1";
+	identify var=u(0) scan alpha=0.05;
+run;
+
+
+/* Identyfikacja i estymacja dla d=1, p=4, q=0 */
+proc arima data = Lab11B.set1;
+	title "set1 - identyfikacja dla okresu różnicowania d=1, p=4, q=0 - ARIMA(4,1,0)";
+	identify var=u(1) alpha=0.05; 
+	run;
+	estimate p=4 q=0;
+run;
+
+
+
+/* Identyfikacja i estymacja dla d=2, p=3, q=0 */
+proc arima data = Lab11B.set1;
+	title "set1 - identyfikacja dla okresu różnicowania d=2, p=3, q=0 - ARIMA(3,2,0)";
+	identify var=u(2) alpha=0.05; 
+	run;
+	estimate p=3 q=0;
+run;
+
+
+
+/* Identyfikacja i estymacja dla d=0, p=1, q=1 */
+proc arima data = Lab11B.set1;
+	title "set1 - identyfikacja dla okresu różnicowania d=0, p=1, q=1 - ARIMA(1,0,1)";
+	identify var=u(0) alpha=0.05;                                                                                                              
+run;                                                                                                                                                                                                                                                                                                                                                                    
+        estimate p=1 q=1;                                                                                                                 
+run;
+
+
+
+/* --------------------------------------------- */
+
+
+
+/* set2 */
+
+/* Wstępna identyfikacja */
+proc arima data = Lab11B.set2;
+	title "Wstępna identyfikacja - set2";
+	identify var=u(0) scan alpha=0.05;
+run;
+
+
+/* Identyfikacja i estymacja dla d=1, p=1, q=2 */
+proc arima data = Lab11B.set2;
+	title "set2 - identyfikacja dla okresu różnicowania d=1, p=1, q=2 - ARIMA(1,1,2)";
+	identify var=u(1) alpha=0.05;                                                                                              
+run;                                                                                                                                                                                                                                                                       
+   	estimate p=1 q=2;                                                                                                                   
+run;
+
+
+/* Identyfikacja i estymacja dla d=0, p=2, q=2 */
+proc arima data = Lab11B.set2;
+	title "set2 - identyfikacja dla okresu różnicowania d=0, p=2, q=2 - ARIMA(2,0,2)";
+	identify var=u(0) alpha=0.05;                                                                                              
+run;
+	estimate p=2 q=2;                                                                                                               
+run;
+
+
+/* --------------------------------------- */
+
+
+/* set3 */
+
+/* Wstępna identyfikacja */
+proc arima data = Lab11B.set3;
+	title "Wstępna identyfikacja - set3";
+	identify var=Total(0) scan alpha=0.05;
+run;
+
+
+/* Identyfikacja i estymacja dla d=0, p=1, q=4 */
+proc arima data = Lab11B.set3;
+	title "set3 - identyfikacja dla okresu różnicowania d=0, p=1, q=4 - ARIMA(1,0,4)";
+	identify var=Total(0) alpha=0.05;                                                                                              
+run;                                                                                                                                                                                                                                                                       
+   	estimate p=1 q=4;                                                                                                                   
+run;
+
+
+/* Identyfikacja i estymacja dla d=1, p=2, q=3 */
+proc arima data = Lab11B.set3;
+	title "set3 - identyfikacja dla okresu różnicowania d=1, p=2, q=3 - ARIMA(2,1,3)";
+	identify var=Total(1) alpha=0.05;                                         
+run;
+	estimate p=2 q=3;                                                                                                               
+run;       
+               
+  
+
+
+/* -------------------------------------------------------- */
+
+
+
+/* 2) Oblicz prognozy na podstawie znalezionych modeli. */
+
+
+
+/* set1 */
+/* Uwaga. Obliczam prognozy porównawcze dla ostatnich 20 wartości naszych danych. */
+
+
+
+/* forecast1 */
+
+/* Identyfikacja, estymacja i prognoza dla d=1, p=4, q=0 */
+proc arima data = Lab11B.set1;
+	title "set1 - identyfikacja dla okresu różnicowania d=1, p=4, q=0 - ARIMA(4,1,0)";
+	identify var=u(1) alpha=0.05; 
+	run;
+	estimate p=4 q=0;
+	run;
+	forecast id=i back=20 lead=20 out=Lab11B.set1_forecast1;
+run;
+
+/* Wykres obliczonej prognozy */
+proc sgplot data = Lab11B.set1_forecast1;
+	title "Wykres prognozy na podstawie modelu ARIMA(4,1,0)";
+	series x=i y=FORECAST;
+	series x=i y=u;
+run;
+
+/* ------------------- */
+
+
+/* forecast2 */
+
+/* Identyfikacja, estymacja i prognoza dla d=2, p=3, q=0 */
+proc arima data = Lab11B.set1;
+	title "set1 - identyfikacja dla okresu różnicowania d=2, p=3, q=0 - ARIMA(3,2,0)";
+	identify var=u(2) alpha=0.05; 
+	run;
+	estimate p=3 q=0;
+	run;
+	forecast id=i back=20 lead=20 out=Lab11B.set1_forecast2;
+run;
+
+/* Wykres obliczonej prognozy */
+proc sgplot data = Lab11B.set1_forecast2;
+	title "Wykres prognozy na podstawie modelu ARIMA(3,2,0)";
+	series x=i y=FORECAST;
+	series x=i y=u;
+run;
+
+
+/* ---------------- */
+
+
+
+/* forecast3 */
+
+/* Identyfikacja, estymacja i prognoza dla d=0, p=1, q=1 */
+proc arima data = Lab11B.set1;
+	title "set1 - identyfikacja dla okresu różnicowania d=0, p=1, q=1 - ARIMA(1,0,1)";
+	identify var=u(0) alpha=0.05;                                                                                                              
+run;                                                                                                                                                                                                                                                                                                                                                                    
+        estimate p=1 q=1;                                                                                                                 
+run;
+	forecast id=i back=20 lead=20 out=Lab11B.set1_forecast3;
+run;
+
+/* Wykres obliczonej prognozy */
+proc sgplot data = Lab11B.set1_forecast3;
+	title "Wykres prognozy na podstawie modelu ARIMA(1,0,1)";
+	series x=i y=FORECAST;
+	series x=i y=u;
+run;
+
+
+/* ----------------------------------------- */
+
+
+/* set2 */
+/* Uwaga. Obliczam prognozy porównawcze dla ostatnich 100 wartości naszych danych. */
+
+
+
+/* forecast1 */
+
+/* Identyfikacja, estymacja i prognoza dla d=1, p=1, q=2 */
+proc arima data = Lab11B.set2;
+	title "set2 - identyfikacja dla okresu różnicowania d=1, p=1, q=2 - ARIMA(1,1,2)";
+	identify var=u(1) alpha=0.05;                                                                                              
+run;                                                                                                                                                                                                                                                                       
+   	estimate p=1 q=2;                                                                                                                   
+run;
+  	forecast id=i back=100 lead=100 out=Lab11B.set2_forecast1;                                                                                 
+run;
+
+/* Wykres obliczonej prognozy */
+proc sgplot data = Lab11B.set2_forecast1;
+	title "Wykres prognozy na podstawie modelu ARIMA(1,1,2)";
+	series x=i y=FORECAST;
+	series x=i y=u;
+run;
+
+
+/* ------------ */
+
+
+/* forecast2 */
+
+/* Identyfikacja, estymacja i prognoza dla d=0, p=2, q=2 */
+proc arima data = Lab11B.set2;
+	title "set2 - identyfikacja dla okresu różnicowania d=0, p=2, q=2 - ARIMA(2,0,2)";
+	identify var=u(0) alpha=0.05;                                                                                              
+run;
+	estimate p=2 q=2;                                                                                                               
+run;                                                                                                                                    
+	forecast id=i back=100 lead=100 out=Lab11B.set2_forecast2;                                                                                                                 
+run;
+
+/* Wykres obliczonej prognozy */
+proc sgplot data = Lab11B.set2_forecast2;
+	title "Wykres prognozy na podstawie modelu ARIMA(2,0,2)";
+	series x=i y=FORECAST;
+	series x=i y=u;
+run;
+
+
+/* --------------------------------------- */
+
+
+/* set3 */
+/* Uwaga. Obliczam prognozy dla ostatnich 20 wartości naszych danych. */
+
+
+
+/* forecast1 */
+
+/* Identyfikacja, estymacja i prognoza dla d=0, p=1, q=4 */
+proc arima data = Lab11B.set3;
+	title "set3 - identyfikacja dla okresu różnicowania d=0, p=1, q=4 - ARIMA(1,0,4)";
+	identify var=Total(0) alpha=0.05;                                                                                              
+run;                                                                                                                                                                                                                                                                       
+   	estimate p=1 q=4;                                                                                                                   
+run;
+	forecast back=20 lead=20 out=Lab11B.set3_forecast1;                                                                                                                 
+run;
+
+/* Dodanie identyfikatora */
+data Lab11B.set3_forecast1;
+	set Lab11B.set3_forecast1;
+	i = _N_;
+run;
+
+/* Wykres obliczonej prognozy */
+proc sgplot data = Lab11B.set3_forecast1;
+	title "Wykres prognozy na podstawie modelu ARIMA(1,0,4)";
+	series x=i y=FORECAST;
+	series x=i y=Total;
+run;
+
+
+/* --------------- */
+
+
+/* forecast2 */
+
+/* Identyfikacja, estymacja i prognoza dla d=1, p=2, q=3 */
+proc arima data = Lab11B.set3;
+	title "set3 - identyfikacja dla okresu różnicowania d=1, p=2, q=3 - ARIMA(2,1,3)";
+	identify var=Total(1) alpha=0.05;                                         
+run;
+	estimate p=2 q=3;                                                                                                               
+run;                                                                                                                                    
+	forecast back=20 lead=20 out=Lab11B.set3_forecast2;                                                                                                                 
+run; 
+
+/* Dodanie identyfikatora */
+data Lab11B.set3_forecast2;
+	set Lab11B.set3_forecast2;
+	i = _N_;
+run;
+
+/* Wykres obliczonej prognozy */
+proc sgplot data = Lab11B.set3_forecast2;
+	title "Wykres prognozy na podstawie modelu ARIMA(2,1,3)";
+	series x=i y=FORECAST;
+	series x=i y=Total;
+run;
+
+
+
+/* ------------------------------------------------------------------------------------------- */
+
+
+/* 3) Oblicz średni błąd kwadratowy (MSE)
+	  dla znalezionych modeli. */
+	 
+/* Uwaga. Przypominam, że obowiązuje konwencja ARIMA(p,d,q). */
+
+
+
+
+/* set1 */
+
+
+
+
+/* forecast1 */
+
+/* Identyfikacja, estymacja i prognoza dla d=1, p=4, q=0 */
+proc arima data = Lab11B.set1;
+	title "set1 - identyfikacja dla okresu różnicowania d=1, p=4, q=0 - ARIMA(4,1,0)";
+	identify var=u(1) alpha=0.05; 
+	run;
+	estimate p=4 q=0;
+	run;
+	forecast id=i lead=0 out=Lab11B.set1_forecast1;
+run;
+
+/* Wykres modelu */
+proc sgplot data = Lab11B.set1_forecast1;
+	title "Wykres modelu ARIMA(4,1,0) dla zbioru set1";
+	series x=i y=FORECAST;
+	series x=i y=u;
+run;
+
+/* forecast1 (d=1, p=4, q=0) */
+data Lab11B.set1_forecast1;
+	set Lab11B.set1_forecast1;
+	mean_squared_error = RESIDUAL*RESIDUAL;
+run;
+
+proc means data = Lab11B.set1_forecast1;
+	title "set1 - statystyki MSE dla modelu ARIMA(4,1,0)";
+	var mean_squared_error;
+run;
+/* Wynik (MSE) odczytujemy z kolumny Średnia - wynosi ok. 3037.21. */ 
+
+
+
+/* --------------------- */
+
+
+
+/* forecast2 */
+
+proc arima data = Lab11B.set1;
+	title "set1 - identyfikacja dla okresu różnicowania d=2, p=3, q=0 - ARIMA(3,2,0)";
+	identify var=u(2) alpha=0.05; 
+	run;
+	estimate p=3 q=0;
+	run;
+	forecast id=i lead=0 out=Lab11B.set1_forecast2;
+run;
+
+/* Wykres modelu */
+proc sgplot data = Lab11B.set1_forecast2;
+	title "Wykres modelu ARIMA(3,2,0) dla zbioru set1";
+	series x=i y=FORECAST;
+	series x=i y=u;
+run;
+
+
+/* forecast2 (d=2, p=3, q=0) */
+data Lab11B.set1_forecast2;
+	set Lab11B.set1_forecast2;
+	mean_squared_error = RESIDUAL*RESIDUAL;
+run;
+
+proc means data = Lab11B.set1_forecast2;
+	title "set1 - statystyki MSE dla modelu ARIMA(3,2,0)";
+	var mean_squared_error;
+run;
+/* Wynik (MSE) odczytujemy z kolumny Średnia - wynosi ok. 4421.17. */ 
+
+
+/* ------------------------------------------------ */
+
+
+/* forecast3 */
+
+/* Identyfikacja, estymacja i prognoza dla d=0, p=1, q=1 */
+proc arima data = Lab11B.set1;
+	title "set1 - identyfikacja dla okresu różnicowania d=0, p=1, q=1 - ARIMA(1,0,1)";
+	identify var=u(0) alpha=0.05;                                                                                                              
+run;                                                                                                                                                                                                                                                                                                                                                                    
+        estimate p=1 q=1;                                                                                                                 
+run;
+	forecast id=i lead=0 out=Lab11B.set1_forecast3;
+run;
+
+/* Wykres modelu */
+proc sgplot data = Lab11B.set1_forecast3;
+	title "Wykres modelu ARIMA(1,0,1) dla zbioru set1";
+	series x=i y=FORECAST;
+	series x=i y=u;
+run;
+
+
+
+/* forecast3 (d=0, p=1, q=1) */
+data Lab11B.set1_forecast3;
+	set Lab11B.set1_forecast3;
+	mean_squared_error = RESIDUAL*RESIDUAL;
+run;
+
+proc means data = Lab11B.set1_forecast3;
+	title "set1 - statystyki MSE dla modelu ARIMA(1,0,1)";
+	var mean_squared_error;
+run;
+/* Wynik (MSE) odczytujemy z kolumny Średnia - wynosi ok. 3042.25. */ 
+
+
+
+
+/* ---------------------------------------------------- */
+
+
+
+
+/* set2 */
+
+
+
+
+/* forecast1 */
+
+/* Identyfikacja, estymacja i prognoza dla d=1, p=1, q=2 */
+proc arima data = Lab11B.set2;
+	title "set2 - identyfikacja dla okresu różnicowania d=1, p=1, q=2 - ARIMA(1,1,2)";
+	identify var=u(1) alpha=0.05;                                                                                              
+run;                                                                                                                                                                                                                                                                       
+   	estimate p=1 q=2;                                                                                                                   
+run;
+  	forecast id=i lead=0 out=Lab11B.set2_forecast1;                                                                                 
+run;
+
+/* Wykres modelu */
+proc sgplot data = Lab11B.set2_forecast1;
+	title "Wykres modelu ARIMA(1,1,2) dla zbioru set2";
+	series x=i y=FORECAST;
+	series x=i y=u;
+run;
+
+
+
+/* forecast1 (d=1, p=1, q=2) */
+data Lab11B.set2_forecast1;
+	set Lab11B.set2_forecast1;
+	mean_squared_error = RESIDUAL*RESIDUAL;
+run;
+
+proc means data = Lab11B.set2_forecast1;
+	title "set2 - statystyki MSE dla modelu ARIMA(1,1,2)";
+	var mean_squared_error;
+run;
+/* Wynik (MSE) odczytujemy z kolumny Średnia - wynosi ok. 0.0107314. */ 
+
+
+/* ----------------------------- */
+
+
+
+/* forecast2 */
+
+/* Identyfikacja, estymacja i prognoza dla d=0, p=2, q=2 */
+proc arima data = Lab11B.set2;
+	title "set2 - identyfikacja dla okresu różnicowania d=0, p=2, q=2 - ARIMA(2,0,2)";
+	identify var=u(0) alpha=0.05;                                                                                              
+run;
+	estimate p=2 q=2;                                                                                                               
+run;                                                                                                                                    
+	forecast id=i lead=0 out=Lab11B.set2_forecast2;                                                                                                                 
+run;
+
+/* Wykres modelu */
+proc sgplot data = Lab11B.set2_forecast2;
+	title "Wykres modelu ARIMA(2,0,2) dla zbioru set2";
+	series x=i y=FORECAST;
+	series x=i y=u;
+run;
+
+
+
+/* forecast2 (d=0, p=2, q=2) */
+data Lab11B.set2_forecast2;
+	set Lab11B.set2_forecast2;
+	mean_squared_error = RESIDUAL*RESIDUAL;
+run;
+
+proc means data = Lab11B.set2_forecast2;
+	title "set2 - statystyki MSE dla modelu ARIMA(2,0,2)";
+	var mean_squared_error;
+run;
+/* Wynik (MSE) odczytujemy z kolumny Średnia - wynosi ok. 0.0101902. */ 
+
+
+
+/* ------------------------------ */
+
+
+
+/* set3 */
+
+
+
+
+/* forecast1 */
+
+/* Identyfikacja, estymacja i prognoza dla d=0, p=1, q=4 */
+proc arima data = Lab11B.set3;
+	title "set3 - identyfikacja dla okresu różnicowania d=0, p=1, q=4 - ARIMA(1,0,4)";
+	identify var=Total(0) alpha=0.05;                                                                                              
+run;                                                                                                                                                                                                                                                                       
+   	estimate p=1 q=4;                                                                                                                   
+run;
+	forecast lead=0 out=Lab11B.set3_forecast1;                                                                                                                 
+run;
+
+/* Dodanie identyfikatora */
+data Lab11B.set3_forecast1;
+	set Lab11B.set3_forecast1;
+	i = _N_;
+run;
+
+/* Wykres modelu */
+proc sgplot data = Lab11B.set3_forecast1;
+	title "Wykres modelu ARIMA(1,0,4) dla zbioru set3";
+	series x=i y=FORECAST;
+	series x=i y=Total;
+run;
+
+
+/* forecast1 (d=0, p=1, q=4) */
+data Lab11B.set3_forecast1;
+	set Lab11B.set3_forecast1;
+	mean_squared_error = RESIDUAL*RESIDUAL;
+run;
+
+proc means data = Lab11B.set3_forecast1;
+	title "set3 - statystyki MSE dla modelu ARIMA(1,0,4)";
+	var mean_squared_error;
+run;
+/* Wynik (MSE) odczytujemy z kolumny Średnia - wynosi ok. 866.1432509. */ 
+
+
+
+/* ------------------------------------- */
+
+
+/* forecast2 */
+
+/* Identyfikacja, estymacja i prognoza dla d=1, p=2, q=3 */
+proc arima data = Lab11B.set3;
+	title "set3 - identyfikacja dla okresu różnicowania d=1, p=2, q=3 - ARIMA(2,1,3)";
+	identify var=Total(1) alpha=0.05;                                         
+run;
+	estimate p=2 q=3;                                                                                                               
+run;                                                                                                                                    
+	forecast lead=0 out=Lab11B.set3_forecast2;                                                                                                                 
+run; 
+
+/* Dodanie identyfikatora */
+data Lab11B.set3_forecast2;
+	set Lab11B.set3_forecast2;
+	i = _N_;
+run;
+
+/* Wykres modelu */
+proc sgplot data = Lab11B.set3_forecast2;
+	title "Wykres modelu ARIMA(2,1,3) dla zbioru set3";
+	series x=i y=FORECAST;
+	series x=i y=Total;
+run;
+
+
+/* forecast2 (d=1, p=2, q=3) */
+data Lab11B.set3_forecast2;
+	set Lab11B.set3_forecast2;
+	mean_squared_error = RESIDUAL*RESIDUAL;
+run;
+
+proc means data = Lab11B.set3_forecast2;
+	title "set3 - statystyki MSE dla modelu ARIMA(2,1,3)";
+	var mean_squared_error;
+run;
+/* Wynik (MSE) odczytujemy z kolumny Średnia - wynosi ok. 637.5556943. */
+
+
+
+
+
+
+/* ------------------------------------------------------------------------------ */
+
+
+
+
+
+/* Wnioski z budowy modeli  */
+
+
+
+/* set1 */
+/*
+	Model ARIMA(4,1,0) charakteryzuje się rozkładem reszt dość dobrze przypominającym rozkład normalny 
+	(wykres normalności reszt). Wykresy korelacji reszt sugerują, że występuje cykliczność błędów
+	(szczęśliwie nie są bardzo duże, choć nie są pomijalne), co oznacza, że model nie oddaje danych najwierniej.
+	
+	Model ARIMA(3,2,0) charakteryzuje się rozkładem reszt niezbyt dobrze przypominającym rozkład normalny 
+	(wykres normalności reszt). Wykresy korelacji reszt sugerują, że występuje cykliczność błędów
+	(są dość spore), co oznacza, że model nie oddaje danych najwierniej.
+	
+	Model ARIMA(1,0,1) charakteryzuje się rozkładem reszt niezbyt dobrze przypominającym rozkład normalny 
+	(wykres normalności reszt). Wykresy korelacji reszt sugerują, że występuje cykliczność błędów
+	(nie są do pominięcia), co oznacza, że model nie oddaje danych najwierniej.
+	
+	Możemy zauważyć, że najmniejszy błąd średniokwadratowy (wśród analizowanych modeli) 
+	jest dla modelu ARIMA(4,1,0) i wynosi ok. 3037.21.
+	Przyjmujemy więc, że ten właśnie model (wśród analizowanych modeli) jest najdokładniejszy.
+*/
+
+
+
+
+
+/* set2 */
+/*
+	Model ARIMA(1,1,2) charakteryzuje się rozkładem reszt dobrze przypominającym rozkład normalny 
+	(wykres normalności reszt). Wykresy korelacji reszt świadczą o występowaniu niewielkich błędów.
+	co oznacza, że model dobrze oddaje dane.
+	
+	
+	Model ARIMA(2,0,2) charakteryzuje się rozkładem reszt dobrze przypominającym rozkład normalny 
+	(wykres normalności reszt). Wykresy korelacji reszt świadczą o występowaniu niewielkich błędów.
+	co oznacza, że model dobrze oddaje dane.
+	
+	
+	Możemy zauważyć, że najmniejszy błąd średniokwadratowy (wśród analizowanych modeli) 
+	jest dla modelu ARIMA(2,0,2) i wynosi ok. 0.0101902.
+	Przyjmujemy więc, że ten właśnie model (wśród analizowanych modeli) jest najdokładniejszy.
+*/
+
+
+
+
+
+
+/* set3 */
+/*
+	Model ARIMA(1,0,4) charakteryzuje się rozkładem reszt słabo przypominającym rozkład normalny 
+	(wykres normalności reszt). Wykresy korelacji reszt sugerują, że występuje cykliczność sporych błędów,
+	co oznacza, że model nienajlepiej oddaje dane.
+	
+	Model ARIMA(2,1,3) charakteryzuje się rozkładem reszt słabo przypominającym rozkład normalny 
+	(wykres normalności reszt). Wykresy korelacji reszt sugerują, że występuje cykliczność niemałych błędów,
+	co oznacza, że model nienajlepiej oddaje dane.
+	
+	Możemy zauważyć, że najmniejszy błąd średniokwadratowy (wśród analizowanych modeli) 
+	jest dla modelu ARIMA(2,1,3) i wynosi ok. 637.5556943.
+	Przyjmujemy więc, że ten właśnie model (wśród analizowanych modeli) jest najdokładniejszy.
+*/
+
+
+
+
+/* -------------------------- */
+
+
+/* Ogólne wnioski z prognoz */
+/* 
+   Możemy zauważyć, że nasze prognozy zbiegają do pewnej ustalonej wartości 
+   (czasem dość szybko, czasem występują początkowe oscylacje), 
+   ewentualnie wykazują określoną tendencję czy też sezonowość 
+   (w zależności od paramterów modelu). Nasze prognozy "przechodzą" przez dane rzeczywiste,
+   niemniej obserwujemy błędy (często dość spore) między wartościami prognozowanymi a rzeczywistymi. 
+*/
+
+
+

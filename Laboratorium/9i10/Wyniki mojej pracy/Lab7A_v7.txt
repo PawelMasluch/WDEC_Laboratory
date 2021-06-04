@@ -1,0 +1,485 @@
+/* Czynności wstępne */
+
+/* Stworzenie biblioteki Lab7A */
+libname Lab7A '/folders/myfolders/Lab7A';
+
+/* Import danych z pliku ads.xlsx do pliku SAS-owego o nazwie ads1 w bibliotece Lab7A */
+proc import
+   datafile = '/folders/myfolders/Lab7A/ads1.xlsx'
+   DBMS = xlsx REPLACE
+   OUT = Lab7A.ads1;
+run;
+
+   
+ 
+
+	/*
+	/* Pomocniczy, opcjonalny datastep (dodanie kolumny id)
+	data Lab7A.ads1;
+		set Lab7A.ads1;
+		id=_n_;
+	run;
+	*/
+
+
+
+/* ------------------------------------------------- */
+
+
+
+/* Wstępna analiza danych */
+
+
+/* Zadanie 1 */
+
+/* Wyświetlenie 10 pierwszych obserwacji pliku danych Ads1. */
+options obs=10;
+proc print data=Lab7A.ads1;
+run;
+
+
+/* Zadanie 2 */
+
+/* 	
+	2a
+	Obliczenie następujących statystyk dla wszystkich danych: 
+	średnia, min, max, oraz odchylenie standardowe 
+	i zapisanie wyników do pliku. 
+*/
+PROC MEANS DATA = Lab7A.ads1 MEAN MIN MAX STDDEV; 
+	title 'Ads1 - statystyki dla wszystkich danych'; 
+	VAR Sales; 
+	output OUT = Lab7A.ads1_stats_all_data (drop=_type_ /*_freq_*/);
+RUN;
+
+
+/* 	
+	2b
+	Obliczenie następujących statystyk dla poszczególnych typów reklamy: 
+	średnia, min, max, oraz odchylenie standardowe 
+	i zapisanie wyników do pliku.
+*/
+
+/* Sortowanie danych po typie reklamy */
+proc sort data = Lab7A.ads1; 
+	by Ad; 
+run;
+
+/* Właściwy program */
+PROC MEANS DATA = Lab7A.ads1 MEAN MIN MAX STDDEV; 
+	title 'Ads1 - statystyki dla poszczególnych typów reklamy'; 
+	VAR Sales; 
+	class /* by */ Ad;
+	output OUT = Lab7A.ads1_stats_kinds_of_ad (drop=_type_ /*_freq_*/);
+RUN;
+
+
+
+/* Zadanie 3 */
+
+/* 	Stworzenie wykresu typu BOX PLOT, 
+	pokazującego statystyki sprzedaży
+	dla poszczególnych typów reklamy
+*/ 
+
+/* Sortowanie danych względem typu reklamy */
+proc sort data = Lab7A.ads1; 
+	by Ad; 
+run;
+
+/* Właściwy procstep */
+PROC BOXPLOT data=Lab7A.ads1;
+	ods graphics on;
+    plot Sales*Ad;
+RUN;
+
+
+/* Alternatywne rozwiązanie */
+proc sgplot data = lab7A.ads1;
+	vbox Sales/category=Ad;
+	xaxis display=(nolabel);
+run;
+
+
+
+
+
+
+
+/* --------------------------------------------------------------------------- */
+
+
+
+
+
+
+
+
+/* Testowanie hipotezy statystycznej */
+
+/* Zadanie 1 */
+
+/* 	Sprawdź, czy hipoteza 0 jest spełniona (PROC GLM). 
+	Dokonaj interpretacji wyników procedury GLM 
+*/
+
+/* Model podstawowy */
+proc glm
+	data=Lab7A.ads1;
+	class Ad;
+	model Sales = Ad/solution;
+run;
+
+/* Model rozszerzony */
+proc glm
+	data=Lab7A.ads1;
+	class Ad Area;
+	model Sales = Ad Area/solution;
+run;
+
+
+
+
+
+/* Zadanie 2 */
+
+
+/* 
+	Średnia dla wszystkich obserwacji              wynosi 66.8194444 - odczytane z zad.2a (wstępna analiza danych)
+
+	Średnia dla wszystkich obserwacji typu display wynosi 56.5555556 - odcz. z zad.2b (wstępna analiza danych)
+	Średnia dla wszystkich obserwacji typu   paper wynosi 73.2222222
+	Średnia dla wszystkich obserwacji typu  people wynosi 66.6111111
+	Średnia dla wszystkich obserwacji typu   radio wynosi 70.8888889
+
+*/
+
+
+
+/* Pomocnicze operacje - usyskanie średnich względem obszarów */
+
+/* Sortowanie danych po typie obszarze */
+proc sort data = Lab7A.ads1; 
+	by Area; 
+run;
+
+/* Właściwy program */
+PROC MEANS DATA = Lab7A.ads1 MEAN; 
+	title 'Ads1 - statystyki dla poszczególnych obszarów'; 
+	VAR Sales; 
+	class /* by */ Area;
+	output OUT = Lab7A.ads1_stats_kinds_of_area (drop=_type_ /*_freq_*/);
+RUN;
+
+
+/* Model podstawowy i rozszerzony */
+
+data Lab7A.ads1;
+    set Lab7A.ads1;
+    
+    /* Model podstawowy i rozszerzony */
+   
+   
+   	/* Średnia wszystkich obserwacji - wielkość odczytana z tabeli z zad.1 (wstępna analiza danych) */
+    mi = 66.8194444;
+   	
+   	/* Średnie dla klas - wielkości odczytane z tabeli z zad.2 (wstępna analiza danych) */
+   	mean_display = 56.5555556;
+	mean_paper   = 73.2222222;
+	mean_people  = 66.6111111;
+	mean_radio   = 70.8888889;
+   	
+   	/* Różnice między średnią sprzedaży dla wszystkich obserwacji i średnią dla danego typu reklamy */
+    if Ad = "display" then tau = mi - mean_display;    tau_display = mi - mean_display;
+    if Ad = "paper"   then tau = mi - mean_paper;    tau_paper = mi - mean_paper;
+    if Ad = "people"  then tau = mi - mean_people;    tau_people = mi - mean_people;
+    if Ad = "radio"   then tau = mi - mean_radio;    tau_radio = mi - mean_radio;
+    
+    /* Wartość zmiennej wyjściowej dla reklamy danego typu (dla modelu podstawowego) */
+    m = mi + tau;
+    
+    /* Różnica między wartością rzeczywistą obserwacji oraz wartością m */
+    eps = sales - m;
+    
+    /* Wartości obserwacji (ta kolumna ma charakter testowy) */
+    y = m + eps;
+    
+     
+    
+    
+    /* Reszta linii kodu dotyczy tylko modelu rozszerzonego */
+   
+   	/* Średnie wartości obserwacji względem obszaru - uzyskane z pomocniczych operacji */
+   	    mean1  = 60.000;
+		mean2  = 64.375;
+		mean3  = 81.000;
+		mean4  = 79.250;
+		mean5  = 72.625;
+		mean6  = 66.375;
+		mean7  = 58.750;
+		mean8  = 73.375;
+		mean9  = 57.625;
+		mean10 = 77.750;
+		mean11 = 52.250;
+		mean12 = 69.750;
+		mean13 = 67.000;
+		mean14 = 64.125;
+		mean15 = 67.000;
+		mean16 = 69.250;
+		mean17 = 53.875;
+		mean18 = 68.375;
+   
+   /* Różnica między średnią sprzedaży dla wszystkich obserwacji i średnią dla danego obszaru */
+    if Area =  1 then   alfa  = mi -  mean1;    alfa1  = mi -  mean1;   
+    if Area =  2 then   alfa  = mi -  mean2;    alfa2  = mi -  mean2;   
+    if Area =  3 then   alfa  = mi -  mean3;    alfa3  = mi -  mean3;   
+    if Area =  4 then   alfa  = mi -  mean4;    alfa4  = mi -  mean4;   
+    if Area =  5 then   alfa  = mi -  mean5;    alfa5  = mi -  mean5;   
+    if Area =  6 then   alfa  = mi -  mean6;    alfa6  = mi -  mean6;   
+    if Area =  7 then   alfa  = mi -  mean7;    alfa7  = mi -  mean7;   
+    if Area =  8 then   alfa  = mi -  mean8;    alfa8  = mi -  mean8;   
+    if Area =  9 then   alfa  = mi -  mean9;    alfa9  = mi -  mean9;   
+    if Area = 10 then   alfa  = mi - mean10;    alfa10  = mi -  mean10;   
+    if Area = 11 then   alfa  = mi - mean11;    alfa11  = mi -  mean11;   
+    if Area = 12 then   alfa  = mi - mean12;    alfa12  = mi -  mean12;   
+    if Area = 13 then   alfa  = mi - mean13;    alfa13  = mi -  mean13;   
+    if Area = 14 then   alfa  = mi - mean14;    alfa14  = mi -  mean14;   
+    if Area = 15 then   alfa  = mi - mean15;    alfa15  = mi -  mean15;   
+    if Area = 16 then   alfa  = mi - mean16;    alfa16  = mi -  mean16;   
+    if Area = 17 then   alfa  = mi - mean17;    alfa17  = mi -  mean17;   
+    if Area = 18 then   alfa  = mi - mean18;    alfa18  = mi -  mean18;   
+    
+    /* Wartość zmiennej wyjściowej dla reklamy danego typu oraz z danego obszaru (dla modelu rozszerzonego) */
+    mr = mi + alfa + tau;
+    
+    /* Błędy modelu rozszerzonego */
+    epsr = sales - mr;
+    
+    /* Wartości obserwacji (ta wartość ma charakter testowy) */
+    yr = mr + epsr;
+run;
+
+
+
+/* Pomocniczy datastep (dodanie kolumny id) */
+	data Lab7A.ads1;
+		set Lab7A.ads1;
+		id=_n_;
+	run;
+	
+
+/* Wykres błędów modeli */
+proc sgplot data = Lab7A.ads1;
+	title 'Wykres błędów modeli'; /* tytuł wykresu */
+	scatter x = id y = eps; /* wykres punktowy */
+	scatter x = id y = epsr; /* wykres punktowy */ 
+run;
+
+
+/* Histogram - błędy modelu podstawowego */
+PROC UNIVARIATE data = Lab7A.ads1; /* miejsce, z którego pobieramy dane do stworzenia histogramu */
+	title 'Histogram - błędy modelu podstawowego';
+	VAR eps; /* dla kolumny eps stworzymy histogram */
+	HISTOGRAM eps; /* stworzenie histogramu dla kolumny eps */
+run; /* uruchomienie tego fragmentu kodu */
+
+
+
+/* Histogram - błędy modelu rozszerzonego */
+PROC UNIVARIATE data = Lab7A.ads1; /* miejsce, z którego pobieramy dane do stworzenia histogramu */
+	title 'Histogram - błędy modelu rozszerzonego';
+	VAR epsr; /* dla kolumny epsr stworzymy histogram */
+	HISTOGRAM epsr; /* stworzenie histogramu dla kolumny epsr */
+run; /* uruchomienie tego fragmentu kodu */
+
+
+
+/* ------------------------------------------------------------- */
+
+
+
+
+/* Laboratorium 7B */
+
+
+
+/* Model podstawowy */
+
+/* Zadanie 1 oraz Zadanie 2 - Obliczenie SST, SSM, SSE, MSM, MSE, F */
+
+data Lab7A.ads1;
+    set Lab7A.ads1;
+    
+    /* Średnia wszystkich obserwacji - wielkość odczytana z tabeli z zad.1 (wstępna analiza danych) */
+    mi = 66.8194444;
+   	
+   	/* Średnie dla klas - wielkości odczytane z tabeli z zad.2 (wstępna analiza danych) */
+   	mean_display = 56.5555556;
+	mean_paper   = 73.2222222;
+	mean_people  = 66.6111111;
+	mean_radio   = 70.8888889;
+   
+   
+    
+    /* Wkłady do SST */
+    SST_basic = (Sales - mi) * (Sales - mi);
+    
+    /* Wkłady do SSE */
+	if Ad = "display" then SSE_basic = (Sales - mean_display) * (Sales - mean_display);
+    if Ad = "paper"   then SSE_basic = (Sales - mean_paper) * (Sales - mean_paper);
+    if Ad = "people"  then SSE_basic = (Sales - mean_people) * (Sales - mean_people);
+    if Ad = "radio"   then SSE_basic = (Sales - mean_radio) * (Sales - mean_radio);
+    
+    /* Wkłady do SSM */
+   	if Ad = "display" then SSM_basic = (mean_display - mi) * (mean_display - mi);
+    if Ad = "paper"   then SSM_basic = (mean_paper - mi) * (mean_paper - mi);
+    if Ad = "people"  then SSM_basic = (mean_people - mi) * (mean_people - mi);
+    if Ad = "radio"   then SSM_basic = (mean_radio - mi) * (mean_radio - mi);
+    
+    
+run;
+
+
+
+
+proc summary data=Lab7A.ads1;
+var SST_basic SSM_basic SSE_basic;
+output out=Lab7A.ads1_totals_podstawowy sum=;
+run;
+
+data Lab7A.ads1_totals_podstawowy;
+	set lab7a.ads1_totals_podstawowy;
+	n = 144;
+	k = 4;
+	SSM_basic_test = SST_basic - SSE_basic;
+	MSM_basic = SSM_basic / (k-1);
+	MSE_basic = SSE_basic / (n-k);
+	F_basic = MSM_basic / MSE_basic;
+	F90_basic = 2.08380;
+	F95_basic = 2.6049;
+	F98_basic = 3.1161; /* tak naprawde to F dla alfa = 0.025  */
+run;
+
+
+
+
+
+/* Model rozszerzony */
+
+/* Zadanie 1 oraz Zadanie 2 - Obliczenie SST, SSM, SSE, MSM, MSE, F */
+
+data Lab7A.ads1;
+    set Lab7A.ads1;
+    
+    /* Średnia wszystkich obserwacji - wielkość odczytana z tabeli z zad.2a (wstępna analiza danych) */
+    mi = 66.8194444;
+   	
+   	/* Średnie dla klas - wielkości odczytane z tabeli z zad.2b (wstępna analiza danych) */
+   	mean_display = 56.5555556;
+	mean_paper   = 73.2222222;
+	mean_people  = 66.6111111;
+	mean_radio   = 70.8888889;
+	
+	
+	
+	/* Średnie wartości obserwacji względem obszaru - uzyskane z pomocniczych operacji */
+   	    mean1  = 60.000;
+		mean2  = 64.375;
+		mean3  = 81.000;
+		mean4  = 79.250;
+		mean5  = 72.625;
+		mean6  = 66.375;
+		mean7  = 58.750;
+		mean8  = 73.375;
+		mean9  = 57.625;
+		mean10 = 77.750;
+		mean11 = 52.250;
+		mean12 = 69.750;
+		mean13 = 67.000;
+		mean14 = 64.125;
+		mean15 = 67.000;
+		mean16 = 69.250;
+		mean17 = 53.875;
+		mean18 = 68.375;
+   
+   
+    /* Średnia względem typu reklamy, dla danej obserwacji */
+    if Ad = "display" then mean_ad = mean_display;    
+    if Ad = "paper"   then mean_ad = mean_paper;      
+    if Ad = "people"  then mean_ad = mean_people;     
+    if Ad = "radio"   then mean_ad = mean_radio;      
+    
+    /* Średnia względem obszaru, dla danej obserwacji */
+    if Area =  1 then     mean_area = mean1;     
+    if Area =  2 then     mean_area = mean2;        
+    if Area =  3 then     mean_area = mean3;    
+    if Area =  4 then     mean_area = mean4;    
+    if Area =  5 then     mean_area = mean5;    
+    if Area =  6 then     mean_area = mean6;    
+    if Area =  7 then     mean_area = mean7;    
+    if Area =  8 then     mean_area = mean8;     
+    if Area =  9 then     mean_area = mean9;     
+    if Area = 10 then     mean_area = mean10;    
+    if Area = 11 then     mean_area = mean11;    
+    if Area = 12 then     mean_area = mean12;   
+    if Area = 13 then     mean_area = mean13;   
+    if Area = 14 then     mean_area = mean14;   
+    if Area = 15 then     mean_area = mean15;    
+    if Area = 16 then     mean_area = mean16;     
+    if Area = 17 then     mean_area = mean17;    
+    if Area = 18 then     mean_area = mean18;    
+   
+   
+   
+    
+    /* Wkłady do SST */
+    SST_extended = (Sales - mi)**2;
+    
+    
+    /* Wkłady do SSE */
+	SSE_extended = (Sales - mean_ad - mean_area + mi)**2;
+     
+     
+    /* Wkłady do SSM */
+   	SSM_extended_ad = (mean_ad - mi)**2;
+   	SSM_extended_area = (mean_area - mi)**2;
+    
+     
+run;
+
+
+
+
+proc summary data=Lab7A.ads1;
+var   SST_extended   SSM_extended_ad   SSM_extended_area   SSE_extended;
+output out=Lab7A.ads1_totals_rozszerzony sum=;
+run;
+
+
+
+
+
+data Lab7A.ads1_totals_rozszerzony;
+	set lab7a.ads1_totals_rozszerzony;
+	
+	n = 144;
+	k = 18+4;
+	
+	SSM_extended = SSM_extended_ad + SSM_extended_area;
+	
+	MSM_extended = SSM_extended / (k-2);
+	MSE_extended = SSE_extended / (n-k+1);
+	
+	F_extended = MSM_extended / MSE_extended;
+	
+	
+	/* 	Biorę wyniki dla df1 = 20 (czyli k-2)
+		oraz df2 = INFINITY (bo nie było 144-1=143) */
+	F90_extended = 1.4206;
+	F95_extended = 1.5705;
+	F98_extended = 1.7085; /* tak naprawde to F dla alfa = 0.025  */
+run;
+
+
+
+
